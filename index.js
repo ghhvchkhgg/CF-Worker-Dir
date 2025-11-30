@@ -1,15 +1,18 @@
 /**
- * 自定义网站配置 
+ * Cyber Blue / Neon Tech - 完整导航站 Worker 源码
+ * 保持原功能（搜索、Hitokoto、分类卡片、出售弹窗），并全面升级视觉为赛博蓝/霓虹科技
+ * 主要修复：搜索引擎切换与搜索触发 bug；完善 favicon 提取；新增炫酷赛博蓝样式与交互。
  */
+
+/* -------------------- 配置区（可按需修改） -------------------- */
 const config = {
   title: "我的数字港湾",
   subtitle: "Explore the World",
-  logo_icon: "compass outline", 
-  hitokoto: true, 
+  logo_icon: "compass outline",
+  hitokoto: true,
   search: true,
   search_engine: [
     { name: "谷 歌", template: "https://www.google.com/search?q=$s" },
-    { name: "百 度", template: "https://www.baidu.com/s?wd=$s" },
     { name: "必 应", template: "https://www.bing.com/search?q=$s" },
     { name: "GitHub", template: "https://github.com/search?q=$s" }
   ],
@@ -87,8 +90,7 @@ const config = {
   ]
 }
 
-/** * 系统逻辑区 
- */
+/* -------------------- 系统逻辑区（请勿轻易修改） -------------------- */
 const el = (tag, attrs, content) => `<${tag} ${attrs.join(" ")}>${content}</${tag}>`;
 
 async function handleRequest(request) {
@@ -105,15 +107,17 @@ addEventListener('fetch', event => {
 })
 
 function getFavicon(url) {
-  if (url.match(/https{0,1}:\/\//)) {
+  // 尽量返回稳定的 favicon 链接，使用 Google S2 服务
+  try {
+    const u = new URL(url);
+    return "https://www.google.cn/s2/favicons?sz=64&domain_url=" + u.origin;
+  } catch (e) {
     return "https://www.google.cn/s2/favicons?sz=64&domain_url=" + url;
-  } else {
-    return "https://www.google.cn/s2/favicons?sz=64&domain_url=http://" + url;
   }
 }
 
 function renderIndex() {
-  const footer = el('footer', [], el('div', ['class="footer"'], 'Powered by ' + el('a', ['class="ui label"', 'href="https://github.com/sleepwood/cf-worker-dir"', 'target="_blank"'], el('i', ['class="github icon"'], "") + 'Cf-Worker-Dir') + ' &copy; Modified by Gemini'));
+  const footer = el('footer', [], el('div', ['class="footer"'], 'Powered by ' + el('a', ['class="ui label"', 'href="https://github.com/sleepwood/cf-worker-dir"', 'target="_blank"'], el('i', ['class="github icon"'], "") + 'Cf-Worker-Dir') + ' © Modified by Gemini'));
   return renderHeader() + renderMain() + footer;
 }
 
@@ -128,7 +132,7 @@ function renderHeader() {
       return item(link.template, link.name);
     }
   }).join(""))
-  var input = el('div', ['class="ui left corner labeled right icon fluid large input"'], el('div', ['class="ui left corner label"'], el('img', ['id="search-fav"', 'class="left floated avatar ui image"', 'src="https://www.baidu.com/favicon.ico"'], "")) + el('input', ['id="searchinput"', 'type="search"', 'placeholder="搜索你想要知道的……"', 'autocomplete="off"'], "") + el('i', ['class="inverted circular search link icon"'], ""));
+  var input = el('div', ['class="ui left corner labeled right icon fluid large input"'], el('div', ['class="ui left corner label"'], el('img', ['id="search-fav"', 'class="left floated avatar ui image"', 'src="https://www.google.com/favicon.ico"'], "")) + el('input', ['id="searchinput"', 'type="search"', 'placeholder="搜索你想要知道的……"', 'autocomplete="off"', 'onkeypress="if(event.keyCode==13){doSearch()}"'], "") + el('i', ['class="inverted circular search link icon"', 'onclick="doSearch()"', 'id="search-btn"'], ""));
   return el('header', [], el('div', ['id="head"', 'class="ui inverted vertical masthead center aligned segment"'], (config.hitokoto ? el('div', ['id="nav"', 'class="ui container"'], nav) : "") + el('div', ['id="title"', 'class="ui text container"'], title + (config.search ? input + menu : "") + `${config.selling_ads ? '<div><a id="menubtn" class="red ui icon inverted button"><i class="heart icon"></i> 喜欢此域名 </a></div>' : ''}`)))
 }
 
@@ -170,102 +174,159 @@ function renderHTML(index, seller) {
       <script src="https://cdn.jsdelivr.net/npm/jquery@3.4.1/dist/jquery.min.js"></script>
       <script src="https://cdn.jsdelivr.net/npm/semantic-ui-css@2.4.1/semantic.min.js"></script>
       <style>
-        /* 这里的CSS负责美化页面 */
+        /* ---------------- 赛博蓝 / 霓虹主题样式 ---------------- */
+        :root{
+          --bg-1: #05080f; /* 最深处 */
+          --bg-2: #08203a; /* 中层 */
+          --accent: #00e5ff; /* 青色霓虹 */
+          --accent-2: #5b6fff; /* 蓝紫 */
+          --card-bg: rgba(6,12,22,0.6);
+          --glass-border: rgba(80,160,255,0.12);
+          --muted: rgba(200,220,255,0.7);
+        }
+
+        html,body{height:100%;margin:0;font-family:Inter, "Segoe UI", Roboto, "Helvetica Neue", Arial}
         body {
-            /* 每日必应壁纸作为背景，如果不喜欢可以换成固定的图片链接 */
-            background: url('https://bing.img.run/1920x1080.php') no-repeat center center fixed;
-            background-size: cover;
+            background: #e6f3ff;
+            color: #1b2a41;
+            -webkit-font-smoothing:antialiased;
+            -moz-osx-font-smoothing:grayscale;
+            overflow-y:auto;
         }
-        /* 遮罩层，让字在背景上更清楚 */
-        body::before {
-            content: "";
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.2); 
-            z-index: -1;
+
+        /* 动态流光覆盖层 */
+        body::after{
+          content: '';
+          position: fixed; inset:0; z-index:0; pointer-events:none;
+          background: linear-gradient(90deg, rgba(91,111,255,0.06), rgba(0,229,255,0.04), rgba(91,111,255,0.06));
+          mix-blend-mode: overlay;
+          animation: glide 12s linear infinite;
         }
-        /* 顶部区域透明化 */
-        #head {
-            background: transparent !important;
-            padding-bottom: 20px;
+        @keyframes glide{from{background-position:0%}to{background-position:200%}}
+
+        /* Header 区域 */
+        #head{background:transparent !important;padding:36px 0 12px 0;position:relative;z-index:2}
+
+        /* 标题 */
+        .ui.inverted.header .content{color: #1b2a41;box-shadow:0 8px 30px rgba(10,20,40,0.6);border-radius:14px;padding:4px}
+        #searchinput{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(15,25,40,0.05));border:none;color: #1b2a41;padding:12px 16px;border-radius:12px;width:70%}
+        #searchinput::placeholder{color: #1b2a41; border-radius:999px; padding:10px}
+        .ui.left.corner.label img{border-radius:6px}
+
+        /* 搜索激活 glow 动效 */
+        .search-glow{box-shadow:0 0 30px rgba(0,229,255,0.14),0 0 60px rgba(91,111,255,0.06) !important; transform:translateY(-2px)}
+
+        /* 搜索引擎 tabs */
+        #sengine .item{color: #1b2a41; border-radius:8px; color: #1b2a41;
+            backdrop-filter: blur(8px) saturate(120%);
+            border: 1px solid rgba(10,40,90,0.25) !important;
+            box-shadow: 0 6px 30px rgba(2,6,20,0.6);
+            transition: all 0.25s cubic-bezier(.2,.9,.2,1);
+            border-radius:12px;
         }
-        .ui.inverted.header .sub.header {
-            color: rgba(255,255,255,0.9);
+        .ui.card .header{color: #1b2a41;font-weight:700}
+        .ui.card .meta{color: #1b2a41;padding-top:8px}
+        .ui.card .content{position:relative}
+
+        .ui.cards>.card:hover{
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 20px 60px rgba(3,9,30,0.75), 0 0 40px rgba(0,229,255,0.06);
+            border: 1px solid rgba(0,229,255,0.18) !important;
         }
-        /* 卡片玻璃拟态效果 */
-        .ui.card, .ui.cards>.card {
-            background: rgba(255, 255, 255, 0.85) !important; /* 半透明白色 */
-            backdrop-filter: blur(10px); /* 毛玻璃模糊 */
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            border: none;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            border-radius: 12px;
+
+        /* 卡片左侧 favicon 圆形 */
+        .ui.image{width:44px;height:44px;border-radius:8px;object-fit:cover;margin-right:12px}
+
+        /* 分类标题 neon 样式 */
+        .ui.horizontal.divider.header{
+            color: #1b2a41;background:transparent;padding:14px 22px;border-radius:999px;font-weight:800;letter-spacing:1px;margin-top:48px;border:1px solid rgba(255,255,255,0.04);
+            position:relative;overflow:visible
         }
-        /* 鼠标悬停卡片上浮 */
-        .ui.card:hover, .ui.cards>.card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
-            background: rgba(255, 255, 255, 0.95) !important;
+        .ui.horizontal.divider.header:before{
+            content:'';position:absolute;left:-20px;right:-20px;top:50%;height:1px;background:linear-gradient(90deg, transparent, rgba(91,111,255,0.18), transparent);transform:translateY(-50%);z-index:-1
         }
-        /* 分类标题样式 */
-        .ui.horizontal.divider.header {
-            color: #fff !important;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
-            margin-top: 40px !important;
+
+        /* Footer */
+        .footer{color: #1b2a41;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(10,20,40,0.06));padding:10px;border-radius:10px;display:inline-block}
+
+        @media only screen and (max-width: 767px){
+            .ui.card{margin-bottom:16px !important}
+            #searchinput{width:100%}
         }
-        /* 搜索框美化 */
-        .ui.large.input {
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            border-radius: 50px;
-            overflow: hidden;
-        }
-        /* 底部版权栏 */
-        .footer {
-            color: rgba(255,255,255,0.8);
-            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-        }
-        /* 移动端适配 */
-        @media only screen and (max-width: 767px) {
-            .ui.card { margin-bottom: 10px !important; }
-        }
-      </style>
+
+        /* Dark header background */
+  header, .page-header, #header, .top-area {
+    background: #0a0f1a !important;
+    background-color: #0a0f1a !important;
+  }
+</style>
   </head>
   <body>
     ${index}
     ${config.selling_ads ? seller : ''}
     <script src="https://v1.hitokoto.cn/?encode=js&select=%23hitokoto" defer></script>
     <script>
-      // 修复后的搜索逻辑
-      $('#sengine a').on('click', function (e) {
-        $('#sengine a.active').toggleClass('active');
-        $(e.target).toggleClass('active');
-        $('#search-fav').attr('src',$(e.target).data('url').match(/https{0,1}:\/\/\S+\//)[0] + '/favicon.ico') ;
+      // ---------------- 修复后的 Tab 切换与 favicon 获取 ----------------
+      $('#sengine').on('click', 'a.item', function (e) {
+        // 移除之前激活态
+        $('#sengine a.active').removeClass('active');
+        $(this).addClass('active');
+
+        // 安全提取 domain，用于 favicon
+        const template = $(this).data('url') || '';
+        try {
+            const origin = new URL(template.replace('$s', 'test')).origin;
+            $('#search-fav').attr('src', origin + '/favicon.ico');
+        } catch (err) {
+            $('#search-fav').attr('src', 'https://www.google.com/favicon.ico');
+        }
       });
 
-      // 执行搜索的函数
+      // 点击搜索时的主逻辑
       function doSearch() {
-          var val = $('#searchinput').val();
+          var val = document.getElementById('searchinput').value.trim();
           if(val === "") return;
-          var url = $('#sengine a.active').data('url');
-          // 使用 encodeURIComponent 确保中文搜索正常，且替换 $s
-          url = url.replace('$s', encodeURIComponent(val));
-          window.open(url, "_blank");
+
+          // 获取当前选择的引擎链接（更稳健）
+          var urlTemplate = $('#sengine a.active').data('url') || '';
+
+          // 优先使用模板替换 $s，如果没有模板则 fallback 到 google
+          if (urlTemplate && urlTemplate.indexOf('$s') !== -1) {
+              var finalUrl = urlTemplate.replace('$s', encodeURIComponent(val));
+              window.open(finalUrl, "_blank");
+          } else if (urlTemplate) {
+              // 如果模板没有 $s（极端情况），把搜索词作为 query 拼接
+              try {
+                  const u = new URL(urlTemplate);
+                  const q = (u.search ? '&' : '?') + 'q=' + encodeURIComponent(val);
+                  window.open(urlTemplate + q, '_blank');
+              } catch (e) {
+                  window.open('https://www.google.com/search?q=' + encodeURIComponent(val), '_blank');
+              }
+          } else {
+              window.open('https://www.google.com/search?q=' + encodeURIComponent(val), '_blank');
+          }
       }
 
-      $('.search').on('click', function (e) {
-          doSearch();
-      });
-
-      /* 监听回车事件 */
-      $("#searchinput").on("keypress", function(event){
-          if (event.keyCode === 13){
-            doSearch();
-          }
+      // 搜索按钮互动效果（发光）
+      $('#searchinput').on('focus', function(){
+        $('.ui.large.input').addClass('search-glow');
+      }).on('blur', function(){
+        $('.ui.large.input').removeClass('search-glow');
       });
 
       $('#menubtn').on('click', function (e) {
           $('#seller').modal('show');
       });
+
+      // 页面 DOM ready 时，确保默认 favicon 正确
+      $(function(){
+        const active = $('#sengine a.active');
+        if(active && active.data('url')){
+          try{ const origin = new URL(active.data('url').replace('$s','test')).origin; $('#search-fav').attr('src', origin + '/favicon.ico'); }catch(e){}
+        }
+      });
+
     </script>
   </body>
   </html>`
